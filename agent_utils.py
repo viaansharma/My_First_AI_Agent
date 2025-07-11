@@ -1,19 +1,26 @@
 # agent_utils.py
-import os
-from pydantic_ai.agent import Agent
-from pydantic_ai.common_tools.tavily import tavily_search_tool
+import requests
 
-# Set your API keys
-os.environ["GROQ_API_KEY"] = "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"
-TAVILY_API_KEY = "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"
+def get_search_results(query: str, api_key: str) -> str:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "prompt": query,
+        "max_tokens": 1000
+    }
+    
+    response = requests.post(
+        "https://api.llama.ai/v1/completions",
+        headers=headers,
+        json=payload
+    )
+    
+    if response.status_code == 200:
+        return response.json()["choices"][0]["text"]
+    else:
+        raise Exception(f"API Error: {response.text}")
 
-# Define and export the agent
-agent = Agent(
-    "groq:llama-3.1-8b-instant",
-    tools=[tavily_search_tool(TAVILY_API_KEY)],
-    system_prompt="Search Tavily for the given query and return the results.",
-)
-
-def get_search_results(query: str) -> str:
-    result = agent.run_sync(query)
-    return result.output
