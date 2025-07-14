@@ -1,44 +1,20 @@
 # agent_utils.py
-import requests
-from typing import Optional
+import os
+from pydantic_ai.agent import Agent
+from pydantic_ai.common_tools.tavily import tavily_search_tool
 
-def get_search_results(query: str, api_key: Optional[str] = None) -> str:
-    """Fetch results from LLaMA API with proper error handling."""
+# Set your API keys
+os.environ["GROQ_API_KEY"] = "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"
+TAVILY_API_KEY = "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"
+
+# Define and export the agent
+agent = Agent(
+    "groq:deepseek-r1-distill-llama-70b",
+    tools=[tavily_search_tool(TAVILY_API_KEY)],
+    system_prompt="Search Tavily for the given query and return the results.",
+)
+
+def get_search_results(query: str) -> str:
+    result = agent.run_sync(query)
+    return result.output
     
-    # If no API key provided, check environment variables
-    if not api_key:
-        import os
-        api_key = os.getenv("LLAMA_API_KEY")  # Load from .env or system
-    
-    if not api_key:
-        raise ValueError("❌ API Key not found. Set LLAMA_API_KEY in environment.")
-    
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": "llama-3.1-8b-instant",
-        "prompt": query,
-        "max_tokens": 1000
-    }
-    
-    try:
-        response = requests.post(
-            "https://api.llama.ai/v1/completions",
-            headers=headers,
-            json=payload,
-            timeout=10  # Avoid hanging
-        )
-        response.raise_for_status()  # Raise HTTP errors (401, 500, etc.)
-        return response.json()["choices"][0]["text"]
-    
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 401:
-            raise Exception("❌ Invalid API Key. Check your LLaMA API key.")
-        else:
-            raise Exception(f"❌ API Error: {e.response.text}")
-    
-    except Exception as e:
-        raise Exception(f"❌ Failed to fetch results: {str(e)}")
