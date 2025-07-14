@@ -1,41 +1,33 @@
-# app.py
 import streamlit as st
 from agent_utils import get_search_results
-import os
 
-# Set page config
-st.set_page_config(
-    page_title="🔎 GenAI Search Agent", 
-    page_icon="🤖",
-    layout="centered"
-)
+st.set_page_config(page_title="🔎 GenAI Search Agent", page_icon="🤖")
 
 st.title("🔍 Ask Viaan's GenAI Search Agent")
 
-# Load API key (prefer Streamlit secrets)
-api_key = st.secrets.get("LLAMA_API_KEY") or os.getenv("LLAMA_API_KEY")
+# Initialize session state for the search trigger
+if "search_triggered" not in st.session_state:
+    st.session_state.search_triggered = False
 
-# Input query
+def trigger_search():
+    """Sets the search flag to True when Enter is pressed."""
+    st.session_state.search_triggered = True
+
+# Text input with Enter key support
 query = st.text_input(
-    "Enter your query:", 
-    placeholder="e.g. What are the latest AI trends?",
-    key="query_input"
+    "Enter your query:",
+    placeholder="e.g. What are the latest trends in Generative AI?",
+    on_change=trigger_search,  # Triggered on Enter
+    key="query_input"  # Helps track changes
 )
 
-if st.button("Search", type="primary"):
-    if not query.strip():
-        st.warning("⚠️ Please enter a query.")
+# Search button (optional, retains button click functionality)
+if st.button("Search") or st.session_state.search_triggered:
+    if query.strip():
+        with st.spinner("Searching..."):
+            response = get_search_results(query)
+        st.success("✅ Here's what I found:")
+        st.write(response)
+        st.session_state.search_triggered = False  # Reset the trigger
     else:
-        with st.spinner("🔍 Searching..."):
-            try:
-                if not api_key:
-                    st.error("❌ API Key missing. Set `LLAMA_API_KEY` in secrets.")
-                else:
-                    response = get_search_results(query, api_key=api_key)
-                    st.success("✅ Results:")
-                    st.markdown("---")
-                    st.write(response)
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-                st.info("ℹ️ Check your API key or try again later.")
-                
+        st.warning("⚠️ Please enter a query before searching.")
